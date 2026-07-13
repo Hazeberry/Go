@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebGPU-Check A17</title>
+<style>
+  body{background:#0d1f10;color:#e8f5ea;font-family:ui-monospace,monospace;padding:20px;font-size:14px;line-height:1.6}
+  .ok{color:#4ade80}.bad{color:#f87171}.warn{color:#fbbf24}
+  pre{background:#152118;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-all}
+</style>
+</head>
+<body>
+<h2>WebGPU-Fähigkeitscheck</h2>
+<pre id="out">Prüfe...</pre>
+<script>
+async function check(){
+  const lines=[];
+  const log=(s)=>lines.push(s);
+
+  if(!('gpu' in navigator)){
+    log('❌ navigator.gpu existiert nicht – WebGPU ist in diesem Browser/Gerät gar nicht implementiert.');
+    document.getElementById('out').innerHTML='<span class="bad">'+lines.join('\n')+'</span>';
+    return;
+  }
+  log('✅ navigator.gpu vorhanden.');
+
+  let adapter;
+  try{
+    adapter=await navigator.gpu.requestAdapter();
+  }catch(e){
+    log('❌ requestAdapter() warf einen Fehler: '+e.message);
+    document.getElementById('out').innerHTML='<span class="bad">'+lines.join('\n')+'</span>';
+    return;
+  }
+
+  if(!adapter){
+    log('❌ requestAdapter() lieferte null – kein GPU-Adapter verfügbar auf diesem Gerät/dieser Chrome-Version. Die gesamte WGSL-Pipeline-Idee ist auf diesem Gerät aktuell NICHT umsetzbar.');
+    document.getElementById('out').innerHTML='<span class="bad">'+lines.join('\n')+'</span>';
+    return;
+  }
+  log('✅ Adapter verfügbar.');
+
+  try{
+    const info=adapter.requestAdapterInfo?await adapter.requestAdapterInfo():(adapter.info||null);
+    if(info) log('ℹ️ Adapter-Info: vendor='+(info.vendor||'?')+' architecture='+(info.architecture||'?')+' device='+(info.device||'?')+' description='+(info.description||'?'));
+  }catch(e){log('ℹ️ Adapter-Info nicht auslesbar: '+e.message);}
+
+  const hasF16=adapter.features.has('shader-f16');
+  log((hasF16?'✅':'❌')+' shader-f16 Feature: '+hasF16);
+  if(!hasF16) log('   → Der MLP-Teil des vorgeschlagenen Shaders (f16-basiert) kann auf diesem Gerät NICHT wie gepostet laufen. Müsste auf f32 umgestellt werden (kostet Performance, aber machbar).');
+
+  log('ℹ️ Alle gemeldeten Features: '+Array.from(adapter.features).join(', '));
+
+  try{
+    const device=await adapter.requestDevice();
+    log('✅ GPUDevice erfolgreich erstellt.');
+    log('ℹ️ maxComputeWorkgroupSizeX: '+device.limits.maxComputeWorkgroupSizeX);
+    log('ℹ️ maxStorageBufferBindingSize: '+device.limits.maxStorageBufferBindingSize);
+    log('ℹ️ maxComputeInvocationsPerWorkgroup: '+device.limits.maxComputeInvocationsPerWorkgroup);
+  }catch(e){
+    log('❌ requestDevice() fehlgeschlagen: '+e.message);
+  }
+
+  document.getElementById('out').innerHTML=lines.map(l=>{
+    const cls=l.startsWith('❌')?'bad':l.startsWith('⚠️')?'warn':l.startsWith('✅')?'ok':'';
+    return cls?'<span class="'+cls+'">'+l+'</span>':l;
+  }).join('\n');
+}
+check();
+</script>
+</body>
+</html>
