@@ -3,6 +3,7 @@
 Eine einzelne HTML-Datei, die in Sekunden zeigt, ob dein Browser/Gerät WebGPU
 unterstützt – und vor allem, welche Features und Limits konkret verfügbar
 sind. Kein Build, keine Abhängigkeiten, kein Server nötig: einfach öffnen.
+https://hazeberry.github.io/WebGPU/
 
 ## Warum
 
